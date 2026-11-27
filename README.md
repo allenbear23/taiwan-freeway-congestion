@@ -1,6 +1,7 @@
-# 台灣國道連假塞車機率與程度預測｜Step 1 可行性探勘
+# 台灣國道連假塞車程度與旅行時間區間預測
 
-本目錄只包含 **階段一** 的可執行程式。階段二（Colab 建模）等你確認 Top 3 主軸後再進行。
+研究範圍**僅限國道**（TDCS M05A eTag，國5南/北向、國1南向三走廊），不推論省道或市區道路。
+包含 **階段一**（24 假設可行性排行榜）與 **階段二**（2025 時序消融建模、五張中文敘事圖、Colab Notebook）。
 
 ## 快速開始
 
@@ -60,7 +61,7 @@ data/external/
 ├── trends/
 │   └── trends_TW.csv         # date, 國5塞車, 高乘載, 替代道路, 台9線, 宜蘭住宿, 景點住宿, geo
 ├── calendar/
-│   └── office_calendar_2024.xlsx   # 人事行政總處「日期 / 休假日別 / 備註」
+│   └── office_calendar_2024.csv    # 人事行政總處「西元日期 / 星期 / 是否放假 / 備註」
 ├── airport/taoyuan_daily_pax.csv   # date, departures, arrivals[, hour]
 ├── hsr/hsr_holiday_capacity.csv    # date, load_factor, extra_train_ratio
 ├── policy/holiday_controls.csv     # date,event,hov_active,hov_release_min,free_toll_active,
@@ -83,6 +84,27 @@ Google Trends 若改用 `--fetch-trends`：單次窗口 ≤180 天、相鄰窗�
 統一在 `config.py` 的 `CORRIDORS` 管理：`N5_SB`、`N5_NB`（國5 南港–頭城）、
 `N1_SB`（國1 桃園–新竹）、`N2_WB/N2_EB`（國2 機場支線，需 VD）。探索邏輯沒有寫死走廊。
 
+## 階段二：建模與圖表
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+python generate_policy_rules.py     # 規則化重建交管表（非官方逐日公告）
+python fetch_trends_h1a.py          # 補抓 1A 關鍵字（真實抓取，失敗標缺席）
+python eda_screener.py --years 2023 2024 2025 --skip-download
+python phase2_model.py              # A/B/C 消融；2023–2024 train / 2025 test
+python src/final_figures.py         # outputs/figures/ 五張 dpi=300 中文圖
+```
+
+`holiday_traffic_final.ipynb` 是 Colab 單一入口（Run All）：字型 → 建模 → 繪圖 → 顯示報告。
+產出在 `outputs/phase2/`（指標、特徵、混淆矩陣、2025 預測）與 `outputs/figures/`。
+最終結果：模型 C 的 Macro F1 = 0.5283、嚴重壅塞 Recall = 0.5429、P50 MAE = 4.25 分鐘；
+相較 Baseline A 改善 30.3%–72.0%，相較傳統 B 改善 8.2%–19.5%。1A 為反假設驗證結果（不顯著）。
+
+## 資料連結
+
+已實測的下載連結與 `MANUAL_NEEDED` 清單見 `outputs/DATA_LINKS.md`。
+
 ## 免責
 
 `[MOCK_TEST_ONLY]` 只出現在 `tests/test_clean.py`，僅驗證邏輯；排行榜所有數字皆來自真實資料或缺席標記。
+交管規則表為「依規則重建」索引，非高公局官方逐日公告；2C/2D 仍維持資料不足。

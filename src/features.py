@@ -11,7 +11,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from config import CORRIDORS, FREE_FLOW_SPEED, HOLIDAY_EVENTS, SLOT_MINUTES
+from config import (CORRIDORS, FREE_FLOW_SPEED, H1A_TRENDS_KEYWORDS,
+                    HOLIDAY_EVENTS, SLOT_MINUTES)
 from src.utils import LOGGER, daterange, slot_of
 
 
@@ -128,10 +129,14 @@ class FeatureBuilder:
     def _trend_mean(self, keyword: str, start: pd.Timestamp, end: pd.Timestamp, geo: str = "TW") -> float:
         if self.trends.empty or keyword not in self.trends.columns or "date" not in self.trends.columns:
             return np.nan
-        d = self.trends[(self.trends["date"] >= start) & (self.trends["date"] <= end)]
+        # trends CSV 由 pd.read_csv(parse_dates=["date"]) 讀入；此处統一轉 Timestamp，
+        # 避免與 e.start（Timestamp）比較時因型別不一致而選到空視窗。
+        start, end = pd.Timestamp(start), pd.Timestamp(end)
+        dates = pd.to_datetime(self.trends["date"], errors="coerce")
+        d = self.trends[(dates >= start) & (dates <= end)]
         if "geo" in d.columns:
             d = d[d["geo"] == geo]
-        return _num(d[keyword].mean())
+        return _num(pd.to_numeric(d[keyword], errors="coerce").mean())
 
     def _weather_at(self, station: str, start: pd.Timestamp, end: pd.Timestamp,
                     slot_min: int | None = None, slot_max: int | None = None) -> float:
@@ -145,16 +150,34 @@ class FeatureBuilder:
         col = "precip_mm" if "precip_mm" in d else None
         return _num(d[col].mean()) if col else np.nan
 
-    def _policy_of(self, event_id: str) -> dict:
+    def _policy_of(self, event_id: str, corridor_id: str | None = None) -> dict:
+        """查交管規則；新表有 corridor_id 時先取走廊別，向後相容舊表。
+
+        新表在同一（事件, 走廊）可能有多列（事件索引列 + 每日明細列），
+        以「先出現的非空值優先」合併，讓索引列的規則時點不會被明細列的空值覆蓋。
+        """
         if self.policy.empty:
             return {}
         e = self.events[self.events["event_id"] == event_id]
         if e.empty:
             return {}
-        row = self.policy[self.policy["date"] == e.iloc[0]["start"]]
-        if row.empty and "event" in self.policy.columns:
-            row = self.policy[self.policy["event"] == e.iloc[0]["event"]]
-        return row.iloc[0].to_dict() if len(row) else {}
+        pol = self.policy.copy()
+        pol["date"] = pd.to_datetime(pol["date"], errors="coerce")
+        rows = pol[pol["date"] == pd.Timestamp(e.iloc[0]["start"])]
+        if corridor_id is not None and "corridor_id" in pol.columns:
+            scoped = rows[rows["corridor_id"] == corridor_id]
+            if not scoped.empty:
+                rows = scoped
+        if rows.empty and "event" in pol.columns:
+            rows = pol[pol["event"] == e.iloc[0]["event"]]
+        if rows.empty:
+            return {}
+        merged: dict = {}
+        for rec in rows.to_dict("records"):
+            for k, v in rec.items():
+                if k not in merged or (pd.isna(merged[k]) and not pd.isna(v)):
+                    merged[k] = v
+        return merged
 
     def _daily_metric(self, date, cid, col):
         if self.daily.empty:
@@ -172,19 +195,35 @@ class FeatureBuilder:
     # 1. 行為心理與預報反身性
     # ==================================================================
     def h1a(self) -> Observation:
+        """D-28~D-4 為基線、D-3~D-1（不含連假首日）為預報升溫窗。
+
+        舊關鍵字「國5塞車」在真實 Trends 檔中全數為 0，导致 X 必為 NaN（n=0），
+        改用較穩定的四個關鍵字；各關鍵字先算「pre/base」倍率再取平均，
+        可避免不同關鍵字的尺度差異直接相加。「天氣」是縫合錨點，
+        其欄位為原始興趣指數（其餘為 kw/天氣），倍率仍為無因次量。
+        """
         rows = []
         for e in self.events.itertuples():
-            base = self._trend_mean("國5塞車", e.start - pd.Timedelta(days=28), e.start - pd.Timedelta(days=4))
-            pre = self._trend_mean("國5塞車", e.start - pd.Timedelta(days=3), e.start - pd.Timedelta(days=1))
-            x = pre / base if np.isfinite(pre) and np.isfinite(base) and base > 0 else np.nan
-            p = self.panel[(self.panel["date"] == e.start) & (self.panel["corridor_id"] == "N5_SB")]
+            start = pd.Timestamp(e.start)
+            base_s, base_e = start - pd.Timedelta(days=28), start - pd.Timedelta(days=4)
+            pre_s, pre_e = start - pd.Timedelta(days=3), start - pd.Timedelta(days=1)
+            ratios = []
+            for kw in H1A_TRENDS_KEYWORDS:
+                base = self._trend_mean(kw, base_s, base_e)
+                pre = self._trend_mean(kw, pre_s, pre_e)
+                if np.isfinite(pre) and np.isfinite(base) and base > 0:
+                    ratios.append(pre / base)
+            x = float(np.mean(ratios)) if ratios else np.nan
+            p = self.panel[(self.panel["date"] == start) & (self.panel["corridor_id"] == "N5_SB")]
             early = p[(p["time_slot_15m"] >= 16) & (p["time_slot_15m"] < 26)]["volume_15m"].sum()
             total = p[(p["time_slot_15m"] >= 16) & (p["time_slot_15m"] < 48)]["volume_15m"].sum()
             y = early / total if total > 0 else np.nan
             if np.isfinite(x) and np.isfinite(y):
                 rows.append([x, y, e.year, e.event_id])
-        return _obs("1A", "行為心理/反身性", "預報反身性（尖峰左移）", "搜尋飆升倍率", "早鳥車流佔比",
-                    "continuous", ("trends", "panel"), rows, "錨點比值已跨批次縫合")
+        return _obs("1A", "行為心理/反身性", "預報反身性（尖峰左移）",
+                    "四關鍵字 D-3~D-1 / D-28~D-4 平均倍率", "早鳥車流佔比",
+                    "continuous", ("trends", "panel"), rows,
+                    "關鍵字=" + "/".join(H1A_TRENDS_KEYWORDS) + "；錨點比值已跨批次縫合")
 
     def h1b(self) -> Observation:
         prov, st = self.ext.get("provincial", (pd.DataFrame(), ""))
@@ -223,7 +262,7 @@ class FeatureBuilder:
                         "需 holiday_controls.csv.hov_release_min（分鐘，自 00:00 起算）")
         rows = []
         for e in self.events.itertuples():
-            pol = self._policy_of(e.event_id)
+            pol = self._policy_of(e.event_id, "N5_SB")
             if not pol or _num(pol.get("hov_active")) != 1:
                 continue
             rel = _num(pol.get("hov_release_min"))
@@ -254,8 +293,19 @@ class FeatureBuilder:
                         "event", ("policy", "panel"), [],
                         "需 holiday_controls.csv.free_toll_end_min")
         rows = []
+        # 對照組：面板中「非連假週末」的真實 04–05 觀測（無免收費規則，flag=0）。
+        # 若只有 flag=1，X 無變異會被評分器判為「變異不足」，故需真實對照。
+        n5 = self.panel[self.panel["corridor_id"] == "N5_SB"]
+        controls_by_year: dict[int, list[pd.Timestamp]] = {}
+        if not n5.empty:
+            for d in pd.to_datetime(pd.Series(n5["date"].unique())).sort_values():
+                if d.dayofweek < 5 or self._event_id_of(d) is not None:
+                    continue
+                controls_by_year.setdefault(d.year, []).append(pd.Timestamp(d))
+        used_controls: set[pd.Timestamp] = set()
+
         for e in self.events.itertuples():
-            pol = self._policy_of(e.event_id)
+            pol = self._policy_of(e.event_id, "N5_SB")
             flag = 1 if _num(pol.get("free_toll_active")) == 1 and np.isfinite(_num(pol.get("free_toll_end_min"))) else 0
             p = self.panel[(self.panel["date"] == e.start) & (self.panel["corridor_id"] == "N5_SB")]
             q = p[(p["time_slot_15m"] >= 16) & (p["time_slot_15m"] < 20)]
@@ -265,8 +315,25 @@ class FeatureBuilder:
             slow = float((q["speed_kmh"] < 60).mean())
             rows.append([flag, vol, e.year, e.event_id])
             rows.append([flag, slow, e.year, e.event_id + "_slow"])
+
+            ctrl = next((d for d in controls_by_year.get(e.year, []) if d not in used_controls), None)
+            if ctrl is None:
+                for yr in sorted(controls_by_year, key=lambda y: abs(y - e.year)):
+                    ctrl = next((d for d in controls_by_year[yr] if d not in used_controls), None)
+                    if ctrl is not None:
+                        break
+            if ctrl is None:
+                continue
+            qc = n5[(n5["date"] == ctrl) & (n5["time_slot_15m"].between(16, 19))]
+            if qc.empty:
+                continue
+            used_controls.add(ctrl)
+            rows.append([0.0, _num(qc["volume_15m"].sum()), e.year, f"{e.event_id}_{ctrl:%m%d}_ctrl"])
+            rows.append([0.0, float((qc["speed_kmh"] < 60).mean()), e.year,
+                         f"{e.event_id}_{ctrl:%m%d}_ctrl_slow"])
         return _obs("2B", "交管政策", "凌晨免收費壓線搶閘", "免收費旗標", "04–05 交通量/低速率",
-                    "event", ("policy", "panel"), rows, "each event 產生兩筆 Y（量、率）")
+                    "event", ("policy", "panel"), rows,
+                    "each event 兩筆 Y（量、率）；對照為非連假週末（flag=0，真實資料）")
 
     def h2c(self) -> Observation:
         if self.policy.empty or "ramp_closure_gantry" not in self.policy.columns:

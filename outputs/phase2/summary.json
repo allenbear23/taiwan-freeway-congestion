@@ -1,0 +1,321 @@
+{
+  "generated_at": "2026-11-27T15:50:25",
+  "elapsed_seconds": 23.62,
+  "root": "C:\\Users\\user\\Documents\\預設專案",
+  "split": {
+    "train_years": "2023-2024",
+    "test_years": "2025",
+    "n_train_rows": 32256,
+    "n_test_rows": 15264,
+    "n_train_days": 112,
+    "n_test_days": 53,
+    "date_overlap": false
+  },
+  "panel": {
+    "n_parquet_files": 165,
+    "panel_rows": 47520,
+    "panel_days": 165,
+    "date_min": "2023-01-19",
+    "date_max": "2025-11-23",
+    "congestion_level_mismatch_vs_speed": 0,
+    "corridors": [
+      "N1_SB",
+      "N5_NB",
+      "N5_SB"
+    ]
+  },
+  "data_sources": {
+    "calendar": "OK",
+    "weather": {
+      "TPE": "OK",
+      "YLP": "OK",
+      "TAY": "OK"
+    },
+    "trends": "OK",
+    "policy": "OK",
+    "trends_keywords": [
+      "台9線",
+      "國5塞車",
+      "國道5號",
+      "天氣",
+      "宜蘭住宿",
+      "替代道路",
+      "雪隧",
+      "高乘載"
+    ],
+    "policy_available_columns": {
+      "hov_active": true,
+      "hov_release_min": true,
+      "free_toll_active": true,
+      "free_toll_end_min": true
+    },
+    "event_count": 18
+  },
+  "feature_lists": {
+    "A": [
+      "hist_mean_speed",
+      "hist_mean_level",
+      "hist_severe_rate"
+    ],
+    "B": [
+      "hist_mean_speed",
+      "hist_mean_level",
+      "hist_severe_rate",
+      "slot_sin",
+      "slot_cos",
+      "hour_sin",
+      "hour_cos",
+      "weekday",
+      "is_weekend",
+      "event_day_index",
+      "is_holiday_period",
+      "ylp_precip_d1"
+    ],
+    "C": [
+      "hist_mean_speed",
+      "hist_mean_level",
+      "hist_severe_rate",
+      "slot_sin",
+      "slot_cos",
+      "hour_sin",
+      "hour_cos",
+      "weekday",
+      "is_weekend",
+      "event_day_index",
+      "is_holiday_period",
+      "ylp_precip_d1",
+      "leave_leverage",
+      "makeup_week_flag",
+      "event_total_days",
+      "days_to_event_end",
+      "min_to_hov_release",
+      "min_to_free_toll_end",
+      "tpe_precip_d1",
+      "precip_scissors_d1",
+      "temp_diff_d1",
+      "ylp_precip_prev_weekend",
+      "hist_mean_heavy_share",
+      "search_anxiety_d1"
+    ]
+  },
+  "feature_diagnostics": {
+    "hist_mean_speed": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 11.478552581810249
+    },
+    "hist_mean_level": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.538710436199751
+    },
+    "hist_severe_rate": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.19452082686064726
+    },
+    "slot_sin": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.7071067811865476
+    },
+    "slot_cos": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.7071067811865476
+    },
+    "hour_sin": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.7071067811865476
+    },
+    "hour_cos": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.7071067811865475
+    },
+    "weekday": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 2.0595216590960423
+    },
+    "is_weekend": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.4996810207011865
+    },
+    "event_day_index": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 2.184546110564772
+    },
+    "is_holiday_period": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.5
+    },
+    "ylp_precip_d1": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.31649276596710646
+    },
+    "leave_leverage": {
+      "train_finite": 23040,
+      "test_finite": 10656,
+      "train_std": 2.4231871445474447
+    },
+    "makeup_week_flag": {
+      "train_finite": 23040,
+      "test_finite": 10656,
+      "train_std": 0.48717938174762687
+    },
+    "event_total_days": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 3.0559723226388504
+    },
+    "days_to_event_end": {
+      "train_finite": 16128,
+      "test_finite": 7200,
+      "train_std": 2.0787279027995824
+    },
+    "min_to_hov_release": {
+      "train_finite": 5760,
+      "test_finite": 2880,
+      "train_std": 451.5365433716301
+    },
+    "min_to_free_toll_end": {
+      "train_finite": 16128,
+      "test_finite": 7200,
+      "train_std": 415.6696404598248
+    },
+    "tpe_precip_d1": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.25978263590768885
+    },
+    "precip_scissors_d1": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.155725025113859
+    },
+    "temp_diff_d1": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.24637168015206004
+    },
+    "ylp_precip_prev_weekend": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 15.08778709274052
+    },
+    "hist_mean_heavy_share": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 0.11285620965903112
+    },
+    "search_anxiety_d1": {
+      "train_finite": 32256,
+      "test_finite": 15264,
+      "train_std": 1.6479577951011408
+    }
+  },
+  "missing_features": [],
+  "model_params": {
+    "classifier": {
+      "objective": "multiclass",
+      "num_class": 4,
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 30,
+      "subsample": 0.9,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.9,
+      "reg_lambda": 1.0,
+      "random_state": 42,
+      "n_jobs": -1,
+      "verbose": -1
+    },
+    "regressor_base": {
+      "objective": "quantile",
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 30,
+      "subsample": 0.9,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.9,
+      "reg_lambda": 1.0,
+      "random_state": 42,
+      "n_jobs": -1,
+      "verbose": -1
+    },
+    "regressor_alphas": [
+      0.5,
+      0.9
+    ]
+  },
+  "metrics": {
+    "A": {
+      "macro_f1": 0.4053955921867593,
+      "severe_recall": 0.31570426335671886,
+      "log_loss": 0.753628733898001,
+      "brier": 0.4168080542856174,
+      "p50_mae": 5.808482442096631,
+      "p90_coverage": 0.8898060796645703
+    },
+    "B": {
+      "macro_f1": 0.48848606060755606,
+      "severe_recall": 0.4543982730706962,
+      "log_loss": 0.6250604858996573,
+      "brier": 0.3410481345342078,
+      "p50_mae": 4.759250204410582,
+      "p90_coverage": 0.8791928721174004
+    },
+    "C": {
+      "macro_f1": 0.5282815518426135,
+      "severe_recall": 0.5429033998920669,
+      "log_loss": 0.5396883275454645,
+      "brier": 0.29128644650709734,
+      "p50_mae": 4.245333202939759,
+      "p90_coverage": 0.8905267295597484
+    }
+  },
+  "improvements_pct": {
+    "C_vs_A": {
+      "macro_f1": 30.312603793492304,
+      "severe_recall": 71.96581196581195,
+      "log_loss": 28.38803733583386,
+      "brier": 30.114966946513583,
+      "p50_mae": 26.911491163820024,
+      "p90_coverage": 0.08098954498600802
+    },
+    "C_vs_B": {
+      "macro_f1": 8.146699454547724,
+      "severe_recall": 19.477434679334912,
+      "log_loss": 13.658223528770286,
+      "brier": 14.590810794222145,
+      "p50_mae": 10.798276606566235,
+      "p90_coverage": 1.2891207153502284
+    }
+  },
+  "leakage_controls": [
+    "依日期年份切分 2023–2024 train / 2025 test，未使用任何隨機切分。",
+    "當日 speed_kmh、volume_15m、heavy_share、travel_time_min 只作標的，從不作為特徵。",
+    "歷史同期平均車速／壅塞率／重車佔比僅由 train groupby 擬合後映射；train 使用 leave-one-out 去掉自身列。",
+    "天氣（YLP/TPE）與 Google Trends 只取 D-1，3C 前序週末累積雨量只取嚴格早於 D 的最近週末。",
+    "train 與 test 共用完全相同的特徵建構函式，無個別調參或個別填值。",
+    "交管分鐘數來自事件前公告的 holiday_controls.csv，而非當日車流觀測；缺失時不建立特徵。"
+  ],
+  "predictions_file_model": "C",
+  "output_files": [
+    "ablation_metrics.csv",
+    "ablation_report.md",
+    "predictions_2025.csv",
+    "predictions_2025_all_models.csv",
+    "feature_importance.csv",
+    "confusion_matrix_model_C.csv",
+    "summary.json"
+  ]
+}
