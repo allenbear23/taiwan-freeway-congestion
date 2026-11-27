@@ -201,6 +201,24 @@ def load_trends(fetch: bool = False, keywords: tuple[str, ...] = (),
 def load_calendar(years: list[int]) -> tuple[pd.DataFrame, str]:
     frames = []
     for y in years:
+        csv_p = EXTERNAL / f"calendar/office_calendar_{y}.csv"
+        if csv_p.exists():  # data.gov.tw 資料集 14718：西元日期,星期,是否放假,備註
+            try:
+                df = pd.read_csv(csv_p, encoding="utf-8-sig")
+                dcol = next((c for c in df.columns if "日期" in str(c)), None)
+                if dcol is not None:
+                    out = pd.DataFrame({
+                        "date": pd.to_datetime(df[dcol].astype(str), format="%Y%m%d", errors="coerce"),
+                    })
+                    fcol = next((c for c in df.columns if "放假" in str(c)), None)
+                    out["day_type"] = (df[fcol].map({0: "上班", 2: "放假"}).fillna("")
+                                       if fcol is not None else "")
+                    ncol = next((c for c in df.columns if "備註" in str(c)), None)
+                    out["note"] = df[ncol].fillna("").astype(str) if ncol is not None else ""
+                    frames.append(out.dropna(subset=["date"]))
+                    continue
+            except Exception as e:  # noqa: BLE001
+                LOGGER.warning("讀取日曆 CSV %s 失敗：%s", csv_p, e)
         p = EXTERNAL / EXTERNAL_FILES["calendar"].format(year=y)
         if not p.exists():
             continue

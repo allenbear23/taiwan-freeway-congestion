@@ -10,9 +10,12 @@ import pandas as pd
 from config import REPORT_PATH
 from src.utils import md_table
 
-TIME_IDS = {"1A", "1B", "1C", "2A", "2B", "2C", "2D"}
+# 軸的語意：時間＝事件內/事件間的「何時塞」動態；空間＝「哪裡塞／跨區轉移」；
+# 宏觀＝旅次需求的上位驅動力。5B/5C 屬連假時序動態，歸入時間軸；
+# 5A 是休假決策的宏觀槓桿，留在宏觀軸（避免同一假設同時佔兩軸）。
+TIME_IDS = {"1A", "1B", "1C", "2A", "2B", "2C", "2D", "5B", "5C"}
 SPACE_IDS = {"3A", "3B", "3D", "8A", "8B"}
-MACRO_IDS = {"4A", "4B", "4C", "5A", "5B", "5C", "3C", "7A", "7B"}
+MACRO_IDS = {"4A", "4B", "4C", "5A", "3C", "7A", "7B"}
 
 
 def golden_triangle(scores: pd.DataFrame) -> pd.DataFrame:
@@ -102,11 +105,15 @@ def render(scores: pd.DataFrame, audit: dict, sources: dict[str, str],
         "",
         "## 五、黃金三角 Top 3（一時間／一空間／一宏觀）",
         "",
+        "> 軸定義：時間＝事件內/事件間的時序動態（含 5B 補班後反彈、5C 長連假提早北返）；"
+        "空間＝走廊/跨區轉移；宏觀＝旅次需求的上位驅動。1A/2A–2D 因搜尋指數變異不足或交管檔缺失，"
+        "暫時無可用候選，故以真實可用的日曆時序假設代理時間軸。",
+        "",
         md_table(golden, float_digits=3),
         "",
         "## 六、候選探索圖",
         "",
-        "\n".join(f"- `outputs/{p}`" for p in fig_paths) or "（無）",
+        "\n".join(f"- `{p.replace(chr(92), '/')}`" for p in fig_paths) or "（無）",
         "",
         "## 七、資料缺口與手動補檔",
         "",
@@ -114,7 +121,7 @@ def render(scores: pd.DataFrame, audit: dict, sources: dict[str, str],
         "| --- | --- | --- |",
         "| CODiS 逐時觀測 | `data/external/weather/hourly_{TPE,YLP,TAY}.csv` | datetime, precip_mm, temp_c |",
         "| Google Trends | `data/external/trends/trends_{geo}.csv` | date, 關鍵字欄位, geo；或加 `--fetch-trends` |",
-        "| 人事行政總處日曆 | `data/external/calendar/office_calendar_{year}.xlsx` | 日期, 休假日別, 備註 |",
+        "| 人事行政總處日曆 | `data/external/calendar/office_calendar_{year}.csv` | 西元日期, 星期, 是否放假, 備註（已由 data.gov.tw 14718 取得） |",
         "| 桃機人次 | `data/external/airport/taoyuan_daily_pax.csv` | date, departures, arrivals[, hour] |",
         "| 高鐵疏運 | `data/external/hsr/hsr_holiday_capacity.csv` | date, load_factor, extra_train_ratio |",
         "| 連假交管 | `data/external/policy/holiday_controls.csv` | date,event,hov_active,hov_release_min,free_toll_active,free_toll_end_min,ramp_closure_gantry,n3_discount |",

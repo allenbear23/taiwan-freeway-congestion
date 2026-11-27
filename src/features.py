@@ -77,7 +77,7 @@ class FeatureBuilder:
             cal = self.ext.get("calendar", (pd.DataFrame(), ""))[0]
             if not cal.empty:
                 sel = cal[(cal["date"] >= s) & (cal["date"] <= en)]
-                rest = int((sel["day_type"].astype(str).str.contains("休")).sum()) if "day_type" in sel else 0
+                rest = int((sel["day_type"].astype(str).str.contains("休|放假")).sum()) if "day_type" in sel else 0
             else:
                 rest = sum(1 for d in daterange(s, en) if d.weekday() >= 5)
             total_days = (en - s).days + 1
@@ -489,7 +489,7 @@ class FeatureBuilder:
             cal = self.calendar[(self.calendar["date"] >= e.start - pd.Timedelta(days=7)) &
                                 (self.calendar["date"] < e.start)]
             note = " ".join(cal["note"].astype(str)) if "note" in cal else ""
-            flag = 1.0 if "補班" in note else 0.0
+            flag = 1.0 if ("補班" in note or "補行上班" in note) else 0.0
             v = self._event_metric(e.event_id, "N5_SB", "total_volume")
             y = v / mean_v if np.isfinite(v) and np.isfinite(mean_v) and mean_v > 0 else np.nan
             if np.isfinite(y):
@@ -681,6 +681,6 @@ class FeatureBuilder:
                 o = _obs(fn.__name__[1:].upper(), "未知", str(fn.__name__), "", "",
                          "continuous", (), [], f"ERROR: {e}")
             out.append(o)
-            LOGGER.info("假設 %-3s %-5s n=%-5d %s", o.hid,
-                        "可用" if o.available else "不足", len(o.df), o.note[:60])
+            LOGGER.info("假設 %-3s %-9s n=%-5d %s", o.hid,
+                        "原始資料足" if o.available else "原始不足", len(o.df), o.note[:60])
         return out
