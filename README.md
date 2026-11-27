@@ -70,6 +70,10 @@ data/external/
 └── gantry_km.csv                   # gantry_id, km（選填）
 ```
 
+氣象資料由 `fetch_weather_once.py` 抓取 [Open-Meteo Archive](https://open-meteo.com/en/docs/historical-weather-api)
+（ERA5 再分析，免登入、非假資料），寫入 `data/external/weather/hourly_{TPE,YLP,TAY}.csv`。
+若想改用 CODiS 觀測，直接覆蓋同名檔案即可（欄位須為 `datetime, precip_mm, temp_c`）。
+
 Google Trends 若改用 `--fetch-trends`：單次窗口 ≤180 天、相鄰窗口重疊 30 天、
 以 `"天氣"` 作錨點取比值後按重疊區中位數縫合尺度，每次請求隨機延遲 8–20 秒，
 快取在 `data/cache/trends/`。農民曆由 `lunar-python` 本地生成，不需手動下載。
