@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-27T15:50:25",
-  "elapsed_seconds": 23.62,
+  "generated_at": "2026-11-27T15:59:07",
+  "elapsed_seconds": 28.83,
   "root": "C:\\Users\\user\\Documents\\預設專案",
   "split": {
     "train_years": "2023-2024",
@@ -301,7 +301,7 @@
     }
   },
   "leakage_controls": [
-    "依日期年份切分 2023–2024 train / 2025 test，未使用任何隨機切分。",
+    "依日期年份切分 2023-2024 train / 2025 test，未使用任何隨機切分。",
     "當日 speed_kmh、volume_15m、heavy_share、travel_time_min 只作標的，從不作為特徵。",
     "歷史同期平均車速／壅塞率／重車佔比僅由 train groupby 擬合後映射；train 使用 leave-one-out 去掉自身列。",
     "天氣（YLP/TPE）與 Google Trends 只取 D-1，3C 前序週末累積雨量只取嚴格早於 D 的最近週末。",

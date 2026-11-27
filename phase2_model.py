@@ -90,6 +90,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Phase 2 ablation modeling pipeline")
     parser.add_argument("--root", type=str, default=None,
                         help="專案根目錄；預設使用 config.ROOT（Colab 可覆蓋）")
+    parser.add_argument("--train-years", type=str, default="2023,2024",
+                        help="訓練年份，逗號分隔（預設 2023,2024）")
+    parser.add_argument("--test-years", type=str, default="2025",
+                        help="測試年份，逗號分隔（預設 2025）")
+    parser.add_argument("--out-subdir", type=str, default="phase2",
+                        help="輸出子目錄，相對於 outputs/（預設 phase2）")
     return parser.parse_args(argv)
 
 
@@ -148,7 +154,7 @@ def fit_one(X_train: pd.DataFrame, y_cls: pd.Series, y_reg: pd.Series,
 def build_report(out_dir: Path, root: Path, summary: dict, metrics: dict,
                  improvements: dict, missing: list[dict]) -> None:
     lines: list[str] = []
-    lines.append("# 階段二：2025 時序消融建模報告\n")
+    lines.append(f"# 階段二：{summary['split']['test_years']} 時序消融建模報告\n")
     lines.append(f"產生時間：{summary['generated_at']}　耗時：{summary['elapsed_seconds']:.1f} 秒\n")
     lines.append("## 1. 時序切分與資料規模\n")
     split = summary["split"]
@@ -162,7 +168,7 @@ def build_report(out_dir: Path, root: Path, summary: dict, metrics: dict,
                  f"{summary['panel']['congestion_level_mismatch_vs_speed']} |")
     lines.append(f"| 分類/回歸標的 | congestion_level (0–3) / travel_time_min |")
 
-    lines.append("\n## 2. 三消融模型的 2025 test 指標\n")
+    lines.append(f"\n## 2. 三消融模型的 {summary['split']['test_years']} test 指標\n")
     lines.append("| 指標 | A Baseline | B 傳統 | C 增強 |\n|---|---:|---:|---:|")
     for key, label in METRIC_LABELS.items():
         lines.append(f"| {label} | {_fmt(metrics['A'][key])} | {_fmt(metrics['B'][key])} | {_fmt(metrics['C'][key])} |")
@@ -215,7 +221,8 @@ def build_report(out_dir: Path, root: Path, summary: dict, metrics: dict,
                  "「國道5號」全為 0、「雪隧」僅少數天非零，故搜尋焦慮指數主要由「高乘載／天氣」構成，"
                  f"本次 train 標準差為 {anxiety_std if anxiety_std is not None else '不可用'}。")
     lines.append("- 研究範圍僅限國道：不推論省道（台9線）或市區道路；國2 因無 M05A eTag 資料不納入推論。")
-    lines.append("- 2025 面板僅至 11 月 23 日，未覆蓋全年；指標是該 53 天、3 走廊、96 時段的加權結果。")
+    lines.append(f"- {summary['split']['test_years']} 測試面板僅至 11 月 23 日，未覆蓋全年；"
+                 f"指標是該 {summary['split']['n_test_days']} 天、3 走廊、96 時段的加權結果。")
     lines.append("- Brier 採多分類 one-hot 與 predict_proba 的四類平方誤差加總（未除以類別數），"
                  "取值範圍 0–2；P90 覆蓋率以真實旅行時間 ≤ P90 預測的比例計算。")
     lines.append("- LightGBM 的非確定性來源已固定 random_state=42，但不同硬體仍可能有微小數值差異。")
@@ -229,10 +236,15 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     root = Path(args.root).resolve() if args.root else config.ROOT
     root = root.resolve()
-    out_dir = root / "outputs" / "phase2"
+    train_years = tuple(int(y) for y in args.train_years.split(",") if y.strip())
+    test_years = tuple(int(y) for y in args.test_years.split(",") if y.strip())
+    if not train_years or not test_years or set(train_years) & set(test_years):
+        raise ValueError("--train-years / --test-years 不可為空或重疊")
+    out_dir = root / "outputs" / args.out_subdir
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"root = {root}")
     print(f"output = {out_dir}")
+    print(f"years = train {train_years} / test {test_years}")
 
     t = time.perf_counter()
     panel, panel_meta = mf.load_panel(root)
@@ -260,8 +272,8 @@ def main(argv=None) -> None:
     full["severe_flag"] = (level >= 2).astype(int).to_numpy()
 
     # ---- 嚴格時序切分（絕不使用 train_test_split） ------------------------
-    train_mask = full["date"].dt.year.isin((2023, 2024))
-    test_mask = full["date"].dt.year == 2025
+    train_mask = full["date"].dt.year.isin(train_years)
+    test_mask = full["date"].dt.year.isin(test_years)
     train = full.loc[train_mask].reset_index(drop=True)
     test = full.loc[test_mask].reset_index(drop=True)
     train_dates = set(train["date"].unique())
@@ -270,7 +282,8 @@ def main(argv=None) -> None:
     if overlap or train.empty or test.empty:
         raise RuntimeError("時序切分失敗：train/test 日期重疊或某一邊為空")
     split = {
-        "train_years": "2023-2024", "test_years": "2025",
+        "train_years": "-".join(map(str, train_years)),
+        "test_years": "-".join(map(str, test_years)),
         "n_train_rows": int(len(train)), "n_test_rows": int(len(test)),
         "n_train_days": len(train_dates), "n_test_days": len(test_dates),
         "date_overlap": overlap,
@@ -438,7 +451,7 @@ def main(argv=None) -> None:
         "metrics": metrics,
         "improvements_pct": improvements,
         "leakage_controls": [
-            "依日期年份切分 2023–2024 train / 2025 test，未使用任何隨機切分。",
+            f"依日期年份切分 {split['train_years']} train / {split['test_years']} test，未使用任何隨機切分。",
             "當日 speed_kmh、volume_15m、heavy_share、travel_time_min 只作標的，從不作為特徵。",
             "歷史同期平均車速／壅塞率／重車佔比僅由 train groupby 擬合後映射；train 使用 leave-one-out 去掉自身列。",
             "天氣（YLP/TPE）與 Google Trends 只取 D-1，3C 前序週末累積雨量只取嚴格早於 D 的最近週末。",
@@ -456,7 +469,7 @@ def main(argv=None) -> None:
         json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     build_report(out_dir, root, summary, metrics, improvements, missing)
 
-    print("[6/7] 2025 test 指標（A / B / C）")
+    print(f"[6/7] {split['test_years']} test 指標（A / B / C）")
     table = pd.DataFrame(
         [[metrics[model][key] for model in ("A", "B", "C")] for key in METRIC_LABELS],
         index=[METRIC_LABELS[key] for key in METRIC_LABELS], columns=["A", "B", "C"])
