@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 大型原始資料與快取（不進版控）
+data/raw/
+data/cache/
+data/processed/
+data/external/
+
+# outputs/ 報告與圖表要進版控，故不忽略
+
+# 系統
+.DS_Store
+Thumbs.db
+*.part
