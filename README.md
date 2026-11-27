@@ -93,11 +93,13 @@ python fetch_trends_h1a.py          # 補抓 1A 關鍵字（真實抓取，失�
 python eda_screener.py --years 2023 2024 2025 --skip-download
 python phase2_model.py              # A/B/C 消融；2023–2024 train / 2025 test
 python walk_forward_validation.py   # 兩組時序驗證：2023→2024、2023–2024→2025
+python confidence_intervals.py      # 測試日區塊 bootstrap 95% 信心區間
 python src/final_figures.py         # outputs/figures/ 五張 dpi=300 中文圖
 ```
 
 `holiday_traffic_final.ipynb` 是 Colab 單一入口（Run All）：字型 → 建模 → 繪圖 → 顯示報告。
-產出在 `outputs/phase2/`（指標、特徵、混淆矩陣、2025 預測）、`outputs/figures/` 與
+產出在 `outputs/phase2/`（指標、特徵、混淆矩陣、2025 預測、
+`confidence_intervals.md/.csv` 信心區間）、`outputs/figures/` 與
 `outputs/walk_forward/walk_forward_report.md`（兩 fold 並排對照）。
 
 最終結果（2025 test）：模型 C 的 Macro F1 = 0.5283、嚴重壅塞 Recall = 0.5429、P50 MAE = 4.25 分鐘；
@@ -107,6 +109,13 @@ python src/final_figures.py         # outputs/figures/ 五張 dpi=300 中文圖
 但 Fold 2024 的嚴重壅塞 Recall 是 B 較高（0.5297 vs C 0.4770），Fold 2025 才由 C 領先（0.5429 vs 0.4544）。
 因此不宣稱 C 在六項指標一致領先；P90 覆蓋率兩 fold 為 0.850–0.894，亦未完全校準。
 2026 連假尚未納入，仍非真正前瞻外部驗證。
+
+**可信度（2000 次測試日區塊 bootstrap）**：2025 整體等級命中 79.3%（最大宗 baseline 66.3%），
+2024 為 73.7%（baseline 62.1%）。C 優於 B 的 bootstrap 勝率在 2025 八項指標中七項為 100%，
+唯一例外 P90 為 93.1%；2024 的 Macro F1／Brier／P50 MAE／P90 為 93.7%–99.8%，
+但嚴重 Recall 僅 4.2%（B 較高）。
+P90 CI：2025 [0.867, 0.913] 與 0.90 相容；2024 [0.838, 0.885] 覆蓋不足。
+詳細區間見 `outputs/phase2/confidence_intervals.md`。
 
 ## 資料連結
 
