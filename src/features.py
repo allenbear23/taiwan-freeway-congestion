@@ -385,10 +385,10 @@ class FeatureBuilder:
         j["y"] = (j["speed_kmh"] < 40).astype(float)
         j["year"] = j["date"].dt.year
         j = j.sample(min(4000, len(j)), random_state=42)
+        out = j[["x", "y", "year"]].copy()
+        out["unit"] = j["date"].dt.strftime("%Y%m%d")
         return _obs("3D", "跨區氣候", "強降雨容量崩跌臨界點", "雨量分級×流量", "跌破40km/h",
-                    "continuous", ("weather", "panel"),
-                    j[["x", "y", "year", "date"]].assign(unit=j["date"].dt.strftime("%Y%m%d"))
-                    .values.tolist())
+                    "continuous", ("weather", "panel"), out.values.tolist())
 
     # ==================================================================
     # 4. 跨運具與出國替代
